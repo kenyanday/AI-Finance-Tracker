@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Finance Tracker PRO</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+    :root {
+        --bg: #f0f2f5;
+        --glass-bg: rgba(255, 255, 255, 0.7);
+        --glass-border: rgba(255, 255, 255, 0.3);
+        --text: #1d1d1f;
+    }
+    [data-theme="dark"] {
+        --bg: #0f172a;
+        --glass-bg: rgba(30, 41, 59, 0.7);
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --text: #f8fafc;
+    }
+
+    body {
+        background-color: var(--bg);
+        color: var(--text);
+        font-family: 'SF Pro Display', -apple-system, sans-serif;
+        min-height: 100vh;
+        overflow-x: hidden;
+        position: relative;
+        transition: background-color 0.5s ease;
+    }
+
+    /* Анимированные круги на фоне */
+    .blur-circle {
+        position: fixed;
+        width: 500px;
+        height: 500px;
+        border-radius: 50%;
+        filter: blur(80px);
+        z-index: -1;
+        opacity: 0.5;
+        animation: move 20s infinite alternate;
+    }
+    .circle-1 { background: #667eea; top: -10%; left: -10%; }
+    .circle-2 { background: #764ba2; bottom: -10%; right: -10%; animation-delay: -5s; }
+
+    @keyframes move {
+        from { transform: translate(0, 0) scale(1); }
+        to { transform: translate(100px, 100px) scale(1.1); }
+    }
+
+    /* Glassmorphism эффект для карточек */
+    .card {
+        background: var(--glass-bg) !important;
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        border: 1px solid var(--glass-border) !important;
+        border-radius: 24px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+        transition: 0.4s ease;
+    }
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.15);
+    }
+
+    .total-gradient {
+        background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%) !important;
+        color: white !important;
+    }
+
+    .theme-toggle {
+        position: fixed;
+        top: 25px;
+        right: 25px;
+        width: 45px;
+        height: 45px;
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--glass-border);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 1.2rem;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .form-control, .form-select {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid var(--glass-border) !important;
+        color: var(--text) !important;
+        border-radius: 12px;
+    }
+
+    /* ФИКС ДЛЯ ТЕМНОЙ ТЕМЫ: ЧИТАЕМОСТЬ ТЕКСТА */
+    [data-theme="dark"] .form-control,
+    [data-theme="dark"] .form-select {
+        background: rgba(255, 255, 255, 0.1) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    }
+
+    [data-theme="dark"] .form-control::placeholder {
+        color: rgba(255, 255, 255, 0.6) !important;
+    }
+
+    [data-theme="dark"] .card h5,
+    [data-theme="dark"] .card h6,
+    [data-theme="dark"] .text-muted,
+    [data-theme="dark"] .list-group-item {
+        color: #ffffff !important;
+    }
+</style>
+</head>
+<body>
+<div class="blur-circle circle-1"></div>
+<div class="blur-circle circle-2"></div>
+
+<div class="theme-toggle" id="themeBtn">🌙</div>
+
+<div class="container py-5">
+    <h1 class="text-center mb-5 fw-bold text-uppercase tracking-wider">🚀 AI Finance Tracker</h1>
+
+    <!-- Dashboard -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card total-gradient p-4 text-center h-100">
+                <small class="opacity-75">ОБЩИЕ ТРАТЫ</small>
+                <h2 class="fw-bold mb-0">{{ total | int }} сом</h2>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="card p-4 h-100">
+                <div class="row text-center">
+                    <div class="col-6 border-end">
+                        <small class="text-muted">ТОП РАСХОД</small>
+                        <h4 class="fw-bold mb-0 text-danger">{{ max_exp | int }} сом</h4>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted">СРЕДНИЙ ЧЕК</small>
+                        <h4 class="fw-bold mb-0 text-primary">{{ avg | int }} сом</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Форма и График -->
+        <div class="col-md-5">
+            <div class="card p-4 mb-4">
+                <h5 class="mb-4">Новая операция</h5>
+                <form method="POST">
+                    <input type="text" name="title" class="form-control mb-3" placeholder="Название" required>
+                    <input type="number" name="amount" class="form-control mb-3" placeholder="Сумма" required>
+                    <select name="category" class="form-select mb-4">
+                        <option value="🍔 Еда">🍔 Еда</option>
+                        <option value="🚕 Транспорт">🚕 Транспорт</option>
+                        <option value="🎮 Развлечения">🎮 Развлечения</option>
+                        <option value="🏠 Дом">🏠 Дом</option>
+                        <option value="📦 Другое">📦 Другое</option>
+                    </select>
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm">Записать</button>
+                </form>
+            </div>
+
+            <div class="card p-4">
+                <h5 class="mb-3 text-center">Аналитика категорий</h5>
+                <div class="chart-container">
+                    <canvas id="myChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Список -->
+        <div class="col-md-7">
+            <div class="card p-4 h-100">
+                <h5 class="mb-4">История транзакций</h5>
+                <div class="list-group list-group-flush">
+                    {% for expense in expenses %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center bg-transparent border-bottom py-3 px-0 text-inherit">
+                        <div>
+                            <span class="badge bg-secondary-subtle text-dark border mb-1" style="font-size: 0.7rem;">{{ expense.category }}</span>
+                            <h6 class="mb-0 fw-bold text-capitalize text-reset">{{ expense.title }}</h6>
+                            <small class="text-muted">{{ expense.date.strftime('%H:%M — %d.%m') }}</small>
+                        </div>
+                        <div class="text-end">
+                            <span class="text-danger fw-bold fs-5">- {{ expense.amount | int }} сом</span>
+                            <br><a href="/delete/{{ expense.id }}" class="text-danger small text-decoration-none opacity-50">Удалить</a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Переключение темы
+    const btn = document.getElementById('themeBtn');
+    btn.addEventListener('click', () => {
+        const theme = document.documentElement.getAttribute('data-theme');
+        if (theme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'light');
+            btn.innerText = '🌙';
+        } else {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            btn.innerText = '☀️';
+        }
+    });
+
+    // Настройка графика
+    const ctx = document.getElementById('myChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ labels|tojson }},
+            datasets: [{
+                data: {{ values|tojson }},
+                backgroundColor: ['#667eea', '#764ba2', '#ff6b6b', '#4ecdc4', '#ffe66d', '#1a535c'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { color: '#888' } } }
+        }
+    });
+
+</script>
+</body>
+</html>
