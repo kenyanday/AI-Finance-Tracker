@@ -4,13 +4,11 @@ from datetime import datetime
 from sqlalchemy import func
 
 app = Flask(__name__)
-# База данных создастся автоматически в папке проекта
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///budget.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 
-# Таблица для хранения трат
 class Expense(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
@@ -19,7 +17,6 @@ class Expense(db.Model):
     date = db.Column(db.DateTime, default=datetime.utcnow)
 
 
-# Инициализация базы данных
 with app.app_context():
     db.create_all()
 
@@ -42,7 +39,6 @@ def index():
     expenses = Expense.query.order_by(Expense.date.desc()).all()
     total = sum(e.amount for e in expenses)
 
-    # Данные для графика (группировка по категориям)
     cat_data = db.session.query(Expense.category, func.sum(Expense.amount)).group_by(Expense.category).all()
     labels = [row[0] for row in cat_data]
     values = [row[1] for row in cat_data]
@@ -63,6 +59,5 @@ def delete(id):
     return redirect('/')
 
 
-# ТОТ САМЫЙ КУСОК ДЛЯ ЗАПУСКА - БЕЗ НЕГО ССЫЛКИ НЕ БУДЕТ
 if __name__ == "__main__":
     app.run(debug=True)
